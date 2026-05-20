@@ -1,0 +1,8 @@
+{
+  "name": "Más Vida",
+  "description": "Sistema de gestión para clínicas de fisioterapia. Incluye registro de pacientes, historiales clínicos, sesiones, firmas digitales por acción y matriz de permisos por roles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
