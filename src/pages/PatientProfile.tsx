@@ -7,7 +7,8 @@ import {
   ArrowLeft, User as UserIcon, FileText, Activity, Clock, 
   Lock, Edit3, CheckCircle2, ShieldAlert, Plus, Check, ShieldCheck,
   Stethoscope, ClipboardList, Minus, Search, Sparkles,
-  Phone, Mail, MapPin, CreditCard, Trash2, Syringe
+  Phone, Mail, MapPin, CreditCard, Trash2, Syringe,
+  Upload, Image as ImageIcon, ZoomIn, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MaleIcon, FemaleIcon } from '../components/GenderAvatar';
@@ -93,6 +94,8 @@ export default function PatientProfile() {
   const [showInvasiveModal, setShowInvasiveModal] = useState(false);
   const [invasiveFormData, setInvasiveFormData] = useState({ procedureName: '', description: '' });
   const [isInvasiveSubmitting, setIsInvasiveSubmitting] = useState(false);
+  const [showDeleteIpModal, setShowDeleteIpModal] = useState(false);
+  const [ipToDelete, setIpToDelete] = useState<InvasiveProcedure | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showDeleteHistoryModal, setShowDeleteHistoryModal] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState('');
@@ -119,6 +122,12 @@ export default function PatientProfile() {
   const [cie10Error, setCie10Error] = useState('');
   const [isCie10Shaking, setIsCie10Shaking] = useState(false);
   const [isCreatingNewHistory, setIsCreatingNewHistory] = useState(false);
+  const [isHistoryDragging, setIsHistoryDragging] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [isDraggingZoom, setIsDraggingZoom] = useState(false);
+  const [dragStartZoom, setDragStartZoom] = useState({ x: 0, y: 0 });
   const [selectedEvolutionTechniques, setSelectedEvolutionTechniques] = useState<string[]>([]);
   const sessionsContainerRef = useRef<HTMLDivElement>(null);
 
@@ -213,7 +222,8 @@ export default function PatientProfile() {
       cie10Description: history?.cie10Description || '',
       anamnesis: history?.anamnesis || '',
       antecedentes: history?.antecedentes || '',
-      physicalExam: history?.physicalExam || ''
+      physicalExam: history?.physicalExam || '',
+      imageUrl: history?.imageUrl || ''
     });
     setPrescribedSessionsCount(currentSessions);
     // Initialize techniques array to the saved array or default empty
@@ -237,7 +247,8 @@ export default function PatientProfile() {
       cie10Description: '',
       anamnesis: '',
       antecedentes: '',
-      physicalExam: ''
+      physicalExam: '',
+      imageUrl: ''
     });
     setPrescribedSessionsCount(1);
     setSessionTechniques(Array.from({ length: 1 }, () => []));
@@ -326,6 +337,14 @@ export default function PatientProfile() {
     setTimeout(() => {
       setShowDeleteSuccessOverlay(false);
     }, 3000);
+  };
+
+  const confirmDeleteInvasiveProcedure = () => {
+    if (!ipToDelete || !patient) return;
+    db.deleteInvasiveProcedure(ipToDelete.id);
+    setShowDeleteIpModal(false);
+    setIpToDelete(null);
+    loadData(patient.id);
   };
 
   const handlePatientEdit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -628,6 +647,36 @@ export default function PatientProfile() {
                         {history.antecedentes || 'No registrado'}
                       </p>
                     </div>
+
+                    {history.imageUrl && (
+                      <div className="md:col-span-2 mt-4">
+                        <p className="text-[var(--muted-foreground)] text-xs font-semibold mb-1.5 uppercase tracking-wider">Imagen de Referencia / Diagnóstica</p>
+                        <div className="relative group overflow-hidden border border-[var(--border)] rounded-2xl bg-black/5 dark:bg-white/5 p-2 flex items-center justify-center max-w-lg mx-auto shadow-sm">
+                          <img 
+                            src={history.imageUrl} 
+                            alt="Imagen de referencia médica" 
+                            className="max-h-60 object-contain rounded-xl transition-all duration-300 group-hover:scale-[1.02] cursor-zoom-in"
+                            onClick={() => {
+                              setZoomedImage(history.imageUrl || null);
+                              setZoomScale(1);
+                              setZoomPosition({ x: 0, y: 0 });
+                            }}
+                            referrerPolicy="no-referrer"
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setZoomedImage(history.imageUrl || null);
+                              setZoomScale(1);
+                              setZoomPosition({ x: 0, y: 0 });
+                            }}
+                            className="absolute bottom-4 right-4 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 border border-white/10 opacity-0 group-hover:opacity-100 cursor-pointer"
+                          >
+                            <ZoomIn size={14} /> Ampliar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="border-t border-[var(--border)] pt-4 mt-4 flex items-center justify-between">
@@ -906,8 +955,8 @@ export default function PatientProfile() {
                                 <span className="bg-[var(--muted)] text-[var(--foreground)] font-bold px-2 py-1 rounded-md text-[10px] uppercase tracking-wider shrink-0">
                                   PROCEDIMIENTO
                                 </span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  <span className="bg-orange-100 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-800/40 text-orange-950 dark:text-orange-400 font-black px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider whitespace-nowrap shadow-sm">
+                                <div className="flex flex-wrap items-center">
+                                  <span className="text-orange-600 dark:text-orange-400 font-black text-[11px] uppercase tracking-wider whitespace-nowrap">
                                     {ip.procedureName}
                                   </span>
                                 </div>
@@ -932,6 +981,19 @@ export default function PatientProfile() {
                                 <ShieldCheck size={14} className="text-orange-500 shrink-0" />
                                 <span>Firmado por Médico: <span className="font-extrabold text-[var(--foreground)]">{doctor?.fullName || 'Dr. Desconocido'}</span></span>
                               </div>
+                              {currentUser?.role === 'MEDICO' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIpToDelete(ip);
+                                    setShowDeleteIpModal(true);
+                                  }}
+                                  className="text-[10px] sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-red-500 font-medium hover:underline cursor-pointer whitespace-nowrap"
+                                  title="Eliminar procedimiento invasivo"
+                                >
+                                  <Trash2 size={12} /> Eliminar
+                                </button>
+                              )}
                             </div>
                           </div>
                         </motion.div>
@@ -1041,6 +1103,47 @@ export default function PatientProfile() {
                   onClick={confirmDeleteHistory} 
                   disabled={deleteConfirmValue !== remainingSessions.toString()}
                   className="flex-1 py-3 bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-600 text-white rounded-xl font-medium transition-colors shadow-md shadow-red-500/20"
+                >
+                  Sí, eliminar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL: DELETE PROCEDIMIENTO INVASIVO */}
+      <AnimatePresence>
+        {showDeleteIpModal && ipToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[var(--card)] p-6 rounded-3xl w-full max-w-sm shadow-xl border border-[var(--border)] my-auto text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} />
+              </div>
+              <h2 className="text-xl font-bold mb-2 text-[var(--foreground)]">Eliminar Procedimiento</h2>
+              <p className="text-[var(--muted-foreground)] text-sm mb-6">
+                ¿Está seguro de que desea eliminar permanentemente el procedimiento invasivo <b>"{ipToDelete.procedureName}"</b>? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-3 w-full">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowDeleteIpModal(false);
+                    setIpToDelete(null);
+                  }} 
+                  className="flex-1 py-3 bg-[var(--muted)] hover:bg-[var(--muted-foreground)]/20 rounded-xl font-medium transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  onClick={confirmDeleteInvasiveProcedure} 
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors shadow-md shadow-red-500/20 cursor-pointer"
                 >
                   Sí, eliminar
                 </button>
@@ -1175,6 +1278,83 @@ export default function PatientProfile() {
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium mb-1.5 focus-within:text-primary-500 transition-colors">Antecedentes (Enfermedades, cirugías, alergias)</label>
                         <textarea required name="antecedentes" rows={4} value={historyFormData.antecedentes} onChange={(e) => setHistoryFormData({ ...historyFormData, antecedentes: e.target.value })} className="w-full px-4 py-3 bg-transparent border border-[var(--border)] rounded-xl outline-none focus:ring-2 focus:ring-primary-500 resize-none leading-relaxed" placeholder="Describa afecciones previas..." />
+                      </div>
+                      
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium mb-1.5 focus-within:text-primary-500 transition-colors">Imagen de Referencia o Diagnóstica (Opcional)</label>
+                        <div 
+                          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all relative overflow-hidden group min-h-[160px] ${
+                            isHistoryDragging 
+                              ? 'border-primary-500 bg-primary-500/5 dark:bg-primary-500/10 scale-[0.99]' 
+                              : 'border-[var(--border)] bg-[var(--muted)]/20 hover:border-primary-400 dark:hover:border-primary-800'
+                          }`}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsHistoryDragging(true);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            setIsHistoryDragging(false);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setIsHistoryDragging(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file && file.type.startsWith('image/')) {
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                if (event.target?.result) {
+                                  setHistoryFormData({ ...historyFormData, imageUrl: event.target.result as string });
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        >
+                          {historyFormData.imageUrl ? (
+                            <div className="relative w-full max-h-72 overflow-hidden rounded-xl flex items-center justify-center bg-black/5 dark:bg-white/5 p-2">
+                              <img 
+                                src={historyFormData.imageUrl} 
+                                alt="Vista previa" 
+                                className="max-h-64 object-contain rounded-lg shadow-sm"
+                                referrerPolicy="no-referrer"
+                              />
+                              <button 
+                                type="button" 
+                                onClick={() => setHistoryFormData({ ...historyFormData, imageUrl: '' })}
+                                className="absolute top-3 right-3 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-all transform hover:scale-110 flex items-center justify-center z-10"
+                                title="Eliminar imagen"
+                              >
+                                <X size={15} />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer w-full text-center flex flex-col items-center justify-center py-4 select-none">
+                              <Upload size={32} className={`mb-2 transition-colors duration-200 ${isHistoryDragging ? 'text-primary-500 animate-bounce' : 'text-[var(--muted-foreground)] group-hover:text-primary-500'}`} />
+                              <span className="text-sm font-semibold text-[var(--foreground)] block">
+                                arrastra una imagen aquí o <span className="text-primary-500 font-extrabold hover:underline">haz clic para buscarla</span>
+                              </span>
+                              <span className="text-xs text-[var(--muted-foreground)] mt-1.5 block">Formatos: JPG, PNG, GIF (Máx. 5MB)</span>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="hidden" 
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      if (event.target?.result) {
+                                        setHistoryFormData({ ...historyFormData, imageUrl: event.target.result as string });
+                                      }
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1398,12 +1578,12 @@ export default function PatientProfile() {
                   />
                 </div>
 
-                <div className="bg-orange-50/50 dark:bg-orange-950/25 p-4 rounded-xl border border-orange-100 dark:border-orange-900/20 text-xs text-orange-800 dark:text-orange-300 leading-relaxed font-semibold">
+                <div className="bg-[var(--muted)]/50 p-4 rounded-xl border border-[var(--border)] text-xs text-[var(--muted-foreground)] leading-relaxed font-semibold">
                   <p className="flex items-start gap-2">
                     <ShieldAlert size={16} className="text-orange-500 shrink-0 mt-0.5 animate-bounce" />
                     <span>
-                      <strong>Consentimiento de Bioseguridad:</strong> Al registrar este procedimiento confirma que se ha obtenido el consentimiento informado del paciente, que el abordaje se realiza bajo estrictas condiciones de asepsia y que el expediente médico quedará legalmente respaldado bajo la firma del médico 
-                      <strong> {currentUser?.fullName}</strong>.
+                      <strong className="text-[var(--foreground)]">Consentimiento de Bioseguridad:</strong> Al registrar este procedimiento confirma que se ha obtenido el consentimiento informado del paciente, que el abordaje se realiza bajo estrictas condiciones de asepsia y que el expediente médico quedará legalmente respaldado bajo la firma del médico 
+                      <strong className="text-[var(--foreground)]"> {currentUser?.fullName}</strong>.
                     </span>
                   </p>
                 </div>
@@ -1674,6 +1854,110 @@ export default function PatientProfile() {
                  La evaluación ha sido eliminada con éxito
                </p>
              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DETAILED INTERACTIVE ZOOM MODAL */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md select-none">
+            
+            {/* Header with control utilities */}
+            <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent z-10 text-white">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="text-primary-400" size={18} />
+                <span className="text-sm font-bold tracking-tight">Imagen de Referencia Clínica</span>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center bg-neutral-900/90 border border-neutral-800 rounded-xl px-2.5 py-1.5 gap-2 shadow-lg backdrop-blur-xl">
+                  <button 
+                    type="button"
+                    onClick={() => setZoomScale(s => Math.max(0.25, s - 0.25))}
+                    className="p-1 px-2 text-xs font-black rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    title="Alejar"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="text-xs font-bold font-mono min-w-[45px] text-center">{Math.round(zoomScale * 100)}%</span>
+                  <button 
+                    type="button"
+                    onClick={() => setZoomScale(s => Math.min(5, s + 0.25))}
+                    className="p-1 px-2 text-xs font-black rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    title="Acercar"
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <div className="w-px h-4 bg-neutral-800" />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setZoomScale(1);
+                      setZoomPosition({ x: 0, y: 0 });
+                    }}
+                    className="p-1 text-xs font-bold rounded-lg hover:bg-neutral-800 transition-colors text-primary-400 cursor-pointer"
+                    title="Reiniciar Vista"
+                  >
+                    Resetear
+                  </button>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setZoomedImage(null);
+                    setZoomScale(1);
+                    setZoomPosition({ x: 0, y: 0 });
+                  }}
+                  className="p-2.5 bg-neutral-900/90 border border-neutral-800 hover:bg-red-600 hover:border-red-500 hover:text-white text-white rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                  title="Cerrar Visualizador"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Drag & pan canvas */}
+            <div 
+              className="w-full h-full flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing p-4"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsDraggingZoom(true);
+                setDragStartZoom({ x: e.clientX - zoomPosition.x, y: e.clientY - zoomPosition.y });
+              }}
+              onMouseMove={(e) => {
+                if (!isDraggingZoom) return;
+                setZoomPosition({
+                  x: e.clientX - dragStartZoom.x,
+                  y: e.clientY - dragStartZoom.y
+                });
+              }}
+              onMouseUp={() => setIsDraggingZoom(false)}
+              onMouseLeave={() => setIsDraggingZoom(false)}
+              onWheel={(e) => {
+                const zoomDelta = e.deltaY < 0 ? 0.15 : -0.15;
+                setZoomScale(s => Math.min(5, Math.max(0.25, s + zoomDelta)));
+              }}
+            >
+              <motion.img 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ opacity: 1 }}
+                style={{ 
+                  transform: `translate(${zoomPosition.x}px, ${zoomPosition.y}px) scale(${zoomScale})`,
+                  transition: isDraggingZoom ? 'none' : 'transform 0.1s ease-out'
+                }}
+                src={zoomedImage} 
+                className="max-w-[90vw] max-h-[80vh] object-contain rounded-xl shadow-2xl select-none pointer-events-none border border-neutral-800/40"
+                alt="Médica Detallada"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            {/* Instruction Footer banner */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-neutral-950/80 px-5 py-2.5 border border-neutral-800 text-neutral-400 rounded-full text-xs font-semibold shadow-2xl backdrop-blur-md pointer-events-none flex items-center gap-2">
+              <span>💡 Arrastra la imagen para moverla • Usa la rueda del mouse o los botones de zoom</span>
+            </div>
           </div>
         )}
       </AnimatePresence>

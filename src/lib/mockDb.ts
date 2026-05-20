@@ -37,6 +37,7 @@ export interface ClinicalHistory {
   prescribedTechniques: string[][];
   prescribedDescriptions?: string[];
   prescribedDates?: string[];
+  imageUrl?: string;
   createdAt: number;
 }
 
@@ -485,6 +486,12 @@ export const db = {
     const idx = s.invasiveProcedures.findIndex(ip => ip.id === procedure.id);
     if (idx >= 0) s.invasiveProcedures[idx] = procedure;
     else s.invasiveProcedures.push(procedure);
+    saveDB(s);
+  },
+  deleteInvasiveProcedure: (procedureId: string) => {
+    const s = loadDB();
+    if (!s.invasiveProcedures) s.invasiveProcedures = [];
+    s.invasiveProcedures = s.invasiveProcedures.filter(ip => ip.id !== procedureId);
     saveDB(s);
   }
 };

@@ -45,10 +45,17 @@ export default function AppLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between h-20 px-6 border-b border-[var(--border)]">
-          <Logo className="scale-90 origin-left" />
-          <button onClick={() => setSidebarOpen(false)} className="text-[var(--muted-foreground)]">
-            <X size={20} />
+        <div className="flex items-center justify-between h-20 px-4 border-b border-[var(--border)] gap-2">
+          <div className="w-[160px] overflow-hidden shrink-0">
+            <Logo className="scale-90 origin-left" />
+          </div>
+          <button 
+            type="button"
+            onClick={() => setSidebarOpen(false)} 
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-[var(--muted)] hover:bg-[var(--muted-foreground)]/10 border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors shrink-0"
+            title="Cerrar barra lateral"
+          >
+            <X size={16} />
           </button>
         </div>
 
