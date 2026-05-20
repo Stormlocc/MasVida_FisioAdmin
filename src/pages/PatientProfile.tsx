@@ -903,12 +903,14 @@ export default function PatientProfile() {
                             <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/[0.02] dark:bg-orange-500/[0.01] rounded-bl-full pointer-events-none" />
                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 font-black px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider shrink-0 flex items-center gap-1 border border-orange-200/50 dark:border-orange-900/30">
-                                  <Syringe size={10} className="text-orange-500 animate-pulse" /> PROCEDIMIENTO INVASIVO
+                                <span className="bg-[var(--muted)] text-[var(--foreground)] font-bold px-2 py-1 rounded-md text-[10px] uppercase tracking-wider shrink-0">
+                                  PROCEDIMIENTO
                                 </span>
-                                <span className="text-sm font-black text-[var(--foreground)] dark:text-orange-200">
-                                  {ip.procedureName}
-                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="bg-orange-100 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-800/40 text-orange-950 dark:text-orange-400 font-black px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider whitespace-nowrap shadow-sm">
+                                    {ip.procedureName}
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex flex-col sm:items-end gap-1 text-[var(--muted-foreground)] text-[10px] font-medium w-full sm:w-auto select-none">
                                 <div className="flex items-center sm:justify-end gap-1.5" title="Fecha de ejecución">
