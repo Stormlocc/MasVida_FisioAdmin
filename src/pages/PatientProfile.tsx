@@ -1622,7 +1622,7 @@ export default function PatientProfile() {
                className="bg-[var(--card)] p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] w-full max-w-4xl shadow-2xl border border-[var(--border)] my-auto max-h-[95vh] flex flex-col overflow-hidden"
             >
               <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center gap-2 shrink-0"><Activity className="text-primary-500"/> Registro de Evolución ({sessions.length + 1}° Sesión)</h2>
-              <form onSubmit={handlePrepareSession} className="space-y-4 overflow-y-auto pr-1">
+              <form onSubmit={handlePrepareSession} className="space-y-4 overflow-y-auto px-4 py-2 pb-4">
                 {history && (
                   <div className="p-4 sm:p-6 bg-[var(--muted)]/20 border border-[var(--border)] rounded-2xl mb-4 sm:mb-6 text-center shadow-sm">
                      <p className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-3 sm:mb-4">Instrucciones del Médico</p>
@@ -1767,7 +1767,7 @@ export default function PatientProfile() {
                {[...Array(20)].map((_, i) => (
                  <motion.div
                    key={i}
-                   className="absolute bg-white/60 dark:bg-emerald-500/20 rounded-full"
+                   className="absolute bg-white/60 dark:bg-emerald-500/10 rounded-full"
                    style={{
                      width: Math.random() * 60 + 20,
                      height: Math.random() * 60 + 20,
@@ -1795,25 +1795,26 @@ export default function PatientProfile() {
                animate={{ scale: 1, opacity: 1, y: 0 }}
                exit={{ scale: 1.1, opacity: 0, y: -50, transition: { duration: 0.5 } }}
                transition={{ type: 'spring', bounce: 0.5, duration: 0.8 }}
-               className="relative z-10 flex flex-col items-center text-center bg-[var(--card)]/90 backdrop-blur-lg p-10 rounded-3xl shadow-2xl border border-[var(--border)] max-w-sm w-full"
+               className="relative z-10 flex flex-col items-center text-center bg-[var(--card)]/95 backdrop-blur-xl p-10 rounded-2xl shadow-2xl border border-[var(--border)] max-w-sm w-full"
              >
-               <motion.div 
-                 initial={{ scale: 0, rotate: -180 }}
-                 animate={{ scale: 1, rotate: 0 }}
-                 transition={{ type: 'spring', bounce: 0.6, delay: 0.2, duration: 0.8 }}
-                 className="w-24 h-24 bg-gradient-to-tr from-secondary-100 to-teal-50 dark:from-secondary-900/40 dark:to-teal-900/20 text-secondary-500 rounded-full flex items-center justify-center mb-8 shadow-inner shadow-secondary-200/50 dark:shadow-none"
-               >
-                 <Sparkles size={40} className="absolute text-secondary-400 animate-pulse" style={{ animationDuration: '3s' }} />
-                 <Check size={48} strokeWidth={3} className="relative z-10" />
-               </motion.div>
+                <motion.div 
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', bounce: 0.6, delay: 0.2, duration: 0.8 }}
+                  className="relative w-20 h-20 bg-emerald-100/40 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6 shadow-sm border border-emerald-200/30 dark:border-emerald-800/20"
+                >
+                  <Sparkles size={18} className="absolute -top-1.5 -right-1.5 text-amber-500 dark:text-amber-400 animate-pulse" />
+                  <Sparkles size={14} className="absolute -bottom-1 -left-1.5 text-emerald-500 dark:text-teal-400 animate-pulse delay-300" />
+                  <Check size={36} strokeWidth={3} className="relative z-10 animate-bounce" style={{ animationDuration: '2s' }} />
+                </motion.div>
                
-               <h2 className="text-3xl font-black text-secondary-900 dark:text-secondary-100 mb-3 flex items-center gap-2 justify-center leading-tight">
+               <h2 className="text-2xl font-black text-[var(--foreground)] mb-1 leading-tight select-none">
                  ¡Buen Trabajo!
                </h2>
-               <p className="text-secondary-700/80 dark:text-secondary-300/80 text-xl font-medium mb-6">
+               <p className="text-[var(--muted-foreground)] text-lg font-medium mb-6 select-none">
                  {successSignerName}
                </p>
-               <p className="text-secondary-600 dark:text-secondary-400 font-semibold bg-secondary-100/50 dark:bg-secondary-900/30 px-5 py-2.5 rounded-xl border border-secondary-200/50 dark:border-secondary-800/40 w-full">
+               <p className="text-emerald-950 dark:text-emerald-300 font-extrabold bg-emerald-100 dark:bg-emerald-950/45 px-5 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800/40 w-full select-none text-sm shadow-inner">
                  Atención registrada con éxito
                </p>
              </motion.div>
