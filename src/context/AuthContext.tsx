@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, db } from '../lib/mockDb';
+import { authAPI } from '../lib/api';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -21,25 +22,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (dni: string, pass: string) => {
-    // In a real app this would be a secure API call
-    return new Promise<User | null>((resolve) => {
-      setTimeout(() => {
-        const u = db.getUserByDni(dni);
-        if (u && u.passwordHash === pass && u.active) {
-          setCurrentUser(u);
-          localStorage.setItem('activeUserId', u.id);
-          resolve(u);
-        } else {
-          resolve(null);
-        }
-      }, 500); // simulate network delay
-    });
+    const result = await authAPI.login(dni, pass);
+
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    const { access_token, user } = result.data!;
+    localStorage.setItem('accessToken', access_token);
+    setCurrentUser(user);
+    return user;
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('activeUserId');
-  };
+    const logout = async () => {
+      await authAPI.logout();
+      localStorage.removeItem('accessToken');
+      setCurrentUser(null);
+    };
 
   return (
     <AuthContext.Provider value={{ currentUser, login, logout }}>
