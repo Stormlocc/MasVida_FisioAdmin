@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db, User } from '../lib/mockDb';
+import { apiService } from '../lib/api';
+import { User } from '../lib/types';
 import { Plus, Edit, CheckCircle, X } from 'lucide-react';
 import { GenderAvatar } from '../components/GenderAvatar';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +16,15 @@ export default function Staff() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    setUsers(db.getUsers());
+    const loadUsers = async () => {
+      try {
+        const loadedUsers = await apiService.getUsers();
+        setUsers(loadedUsers);
+      } catch (error) {
+        console.error('Error loading users:', error);
+      }
+    };
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -27,7 +36,7 @@ export default function Staff() {
     }
   }, [successAlert]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Solo el medico puede crear o editar al personal técnico
@@ -36,52 +45,59 @@ export default function Staff() {
       return;
     }
 
-    // No puede haber dos personal técnico con el mismo DNI
-    const isDniDuplicate = db.getUsers().some(u => 
-      u.dni.trim().toLowerCase() === formData.dni.trim().toLowerCase() && 
-      u.id !== editingUserId
-    );
+    try {
+      // No puede haber dos personal técnico con el mismo DNI
+      const allUsers = await apiService.getUsers();
+      const isDniDuplicate = allUsers.some(u => 
+        u.dni.trim().toLowerCase() === formData.dni.trim().toLowerCase() && 
+        u.id !== editingUserId
+      );
 
-    if (isDniDuplicate) {
-      setError('Ya existe un miembro del personal técnico registrado con el mismo DNI.');
-      return;
-    }
-
-    let isEdit = false;
-    if (editingUserId) {
-      const existingUser = db.getUserById(editingUserId);
-      if (existingUser) {
-        isEdit = true;
-        const updatedUser: User = {
-          ...existingUser,
-          fullName: formData.fullName,
-          dni: formData.dni,
-          passwordHash: formData.passwordHash,
-          role: formData.role,
-          gender: formData.gender,
-        };
-        db.saveUser(updatedUser);
+      if (isDniDuplicate) {
+        setError('Ya existe un miembro del personal técnico registrado con el mismo DNI.');
+        return;
       }
-    } else {
-      const newUser: User = { 
-        ...formData, 
-        id: `u-${Date.now()}`, 
-        active: true 
-      };
-      db.saveUser(newUser);
+
+      let isEdit = false;
+      if (editingUserId) {
+        const existingUser = await apiService.getUserById(editingUserId);
+        if (existingUser) {
+          isEdit = true;
+          const updatedUser: User = {
+            ...existingUser,
+            fullName: formData.fullName,
+            dni: formData.dni,
+            passwordHash: formData.passwordHash,
+            role: formData.role,
+            gender: formData.gender,
+          };
+          await apiService.saveUser(updatedUser);
+        }
+      } else {
+        const newUser: User = { 
+          ...formData, 
+          id: `u-${Date.now()}`, 
+          active: true 
+        };
+        await apiService.saveUser(newUser);
+      }
+
+      setSuccessAlert(
+        isEdit 
+          ? `¡Cambios guardados con éxito para ${formData.fullName}!` 
+          : `¡Personal técnico ${formData.fullName} registrado con éxito!`
+      );
+
+      const updatedUsers = await apiService.getUsers();
+      setUsers(updatedUsers);
+      setShowModal(false);
+      setEditingUserId(null);
+      setError('');
+      setFormData({ fullName: '', dni: '', passwordHash: '', role: 'FISIOTERAPEUTA', gender: 'MASCULINO' });
+    } catch (error) {
+      setError('Error al guardar el personal técnico. Por favor intente de nuevo.');
+      console.error('Error saving user:', error);
     }
-
-    setSuccessAlert(
-      isEdit 
-        ? `¡Cambios guardados con éxito para ${formData.fullName}!` 
-        : `¡Personal técnico ${formData.fullName} registrado con éxito!`
-    );
-
-    setUsers(db.getUsers());
-    setShowModal(false);
-    setEditingUserId(null);
-    setError('');
-    setFormData({ fullName: '', dni: '', passwordHash: '', role: 'FISIOTERAPEUTA', gender: 'MASCULINO' });
   };
 
   return (

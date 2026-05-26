@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db, Patient, ClinicalHistory, SessionRecord, User, InvasiveProcedure } from '../lib/mockDb';
+import { Patient, ClinicalHistory, SessionRecord, User, InvasiveProcedure } from '../lib/types';
+import { apiService } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { format, differenceInYears } from 'date-fns';
 import { 
@@ -155,26 +156,32 @@ export default function PatientProfile() {
     if (id) loadData(id);
   }, [id]);
 
-  const loadData = (patientId: string) => {
-    const p = db.getPatientById(patientId);
-    if (p) {
-      setPatient(p);
-      const allH = db.getHistoriesByPatientId(patientId).sort((a,b) => b.createdAt - a.createdAt);
-      setAllHistories(allH);
-      
-      // If we already have a selected history, try to keep it selected if it still exists
-      const currHistId = history ? history.id : (allH.length > 0 ? allH[0].id : null);
-      const selectedHist = allH.find(h => h.id === currHistId) || (allH.length > 0 ? allH[0] : null);
-      
-      setHistory(selectedHist);
-      if (selectedHist) {
-        setSessions(db.getSessionsByHistoryId(selectedHist.id));
-      } else {
-        setSessions([]);
-      }
+  const loadData = async (patientId: string) => {
+    try {
+      const p = await apiService.getPatientById(patientId);
+      if (p) {
+        setPatient(p);
+        const allH = await apiService.getHistoriesByPatientId(patientId);
+        const sortedHistories = allH.sort((a,b) => b.createdAt - a.createdAt);
+        setAllHistories(sortedHistories);
+        
+        // If we already have a selected history, try to keep it selected if it still exists
+        const currHistId = history ? history.id : (sortedHistories.length > 0 ? sortedHistories[0].id : null);
+        const selectedHist = sortedHistories.find(h => h.id === currHistId) || (sortedHistories.length > 0 ? sortedHistories[0] : null);
+        
+        setHistory(selectedHist);
+        if (selectedHist) {
+          const sessions = await apiService.getSessionsByHistoryId(selectedHist.id);
+          setSessions(sessions);
+        } else {
+          setSessions([]);
+        }
 
-      const ips = db.getInvasiveProceduresByPatientId(patientId);
-      setInvasiveProcedures(ips);
+        const ips = await apiService.getInvasiveProceduresByPatientId(patientId);
+        setInvasiveProcedures(ips);
+      }
+    } catch (error) {
+      console.error('Error loading patient data:', error);
     }
   };
 

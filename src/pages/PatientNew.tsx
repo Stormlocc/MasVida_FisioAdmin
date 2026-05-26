@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, Patient } from '../lib/mockDb';
+import { Patient } from '../lib/types';
+import { apiService } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,29 +28,34 @@ export default function PatientNew() {
     }
   }, [currentUser, navigate]);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     
-    // Validate DNI uniqueness
-    const existingPatients = db.getPatients();
-    if (existingPatients.some(p => p.dni === formData.dni)) {
-      setErrorMsg('¡Un paciente con este DNI ya está registrado!');
-      return;
-    }
+    try {
+      // Validate DNI uniqueness
+      const existingPatients = await apiService.getPatients();
+      if (existingPatients.some(p => p.dni === formData.dni)) {
+        setErrorMsg('¡Un paciente con este DNI ya está registrado!');
+        return;
+      }
 
-    const newPatient: Patient = {
-      ...(formData as any),
-      id: `p-${Date.now()}`,
-      status: 'ACTIVO',
-      createdAt: Date.now(),
-    };
-    db.savePatient(newPatient);
-    
-    setShowSuccess(true);
-    setTimeout(() => {
-      navigate(`/patients/${newPatient.id}`);
-    }, 2000);
+      const newPatient: Patient = {
+        ...(formData as any),
+        id: `p-${Date.now()}`,
+        status: 'ACTIVO',
+        createdAt: Date.now(),
+      };
+      await apiService.savePatient(newPatient);
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate(`/patients/${newPatient.id}`);
+      }, 2000);
+    } catch (error) {
+      setErrorMsg('Error al registrar el paciente. Por favor intente de nuevo.');
+      console.error('Error saving patient:', error);
+    }
   };
 
   return (

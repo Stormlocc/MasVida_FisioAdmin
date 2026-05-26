@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, db } from '../lib/mockDb';
+import { User } from '../lib/types';
+import { apiService } from '../lib/api';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -15,30 +16,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem('activeUserId');
     if (saved) {
-      const u = db.getUserById(saved);
-      if (u) setCurrentUser(u);
+      apiService.getUserById(saved).then((u) => {
+        if (u) {
+          setCurrentUser(u);
+          apiService.setCurrentUser(u);
+        }
+      });
     }
   }, []);
 
-  const login = async (dni: string, pass: string) => {
-    // In a real app this would be a secure API call
-    return new Promise<User | null>((resolve) => {
-      setTimeout(() => {
-        const u = db.getUserByDni(dni);
-        if (u && u.passwordHash === pass && u.active) {
-          setCurrentUser(u);
-          localStorage.setItem('activeUserId', u.id);
-          resolve(u);
-        } else {
-          resolve(null);
-        }
-      }, 500); // simulate network delay
-    });
+  const login = async (dni: string, pass: string): Promise<User | null> => {
+    try {
+      const u = await apiService.login(dni, pass);
+      setCurrentUser(u);
+      localStorage.setItem('activeUserId', u.id);
+      apiService.setCurrentUser(u);
+      return u;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return null;
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await apiService.logout();
     setCurrentUser(null);
     localStorage.removeItem('activeUserId');
+    apiService.setCurrentUser(null);
   };
 
   return (

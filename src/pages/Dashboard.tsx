@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db, Patient, ClinicalHistory } from '../lib/mockDb';
+import { apiService } from '../lib/api';
+import { Patient, ClinicalHistory } from '../lib/types';
 import { useAuth } from '../context/AuthContext';
 import { Search, AlertTriangle, ArrowRight, Activity, Plus, CheckCircle2, BellRing } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -15,24 +16,31 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const allP = db.getPatients();
-    setPatients(allP);
+    const loadData = async () => {
+      try {
+        const allP = await apiService.getPatients();
+        setPatients(allP);
 
-    // Calculate alerts for patients nearing end of treatment
-    const alertList: {patient: Patient, history: ClinicalHistory, remaining: number}[] = [];
-    allP.forEach(p => {
-      if (p.status !== 'SUSPENDIDO' && p.status !== 'FINALIZADO') {
-        const history = db.getCurrentHistory(p.id);
-        if (history) {
-          const sessions = db.getSessionsByHistoryId(history.id);
-          const remaining = history.prescribedSessions - sessions.length;
-          if (remaining >= 0 && remaining <= 2) {
-            alertList.push({ patient: p, history, remaining });
+        // Calculate alerts for patients nearing end of treatment
+        const alertList: {patient: Patient, history: ClinicalHistory, remaining: number}[] = [];
+        for (const p of allP) {
+          if (p.status !== 'SUSPENDIDO' && p.status !== 'FINALIZADO') {
+            const history = await apiService.getCurrentHistory(p.id);
+            if (history) {
+              const sessions = await apiService.getSessionsByHistoryId(history.id);
+              const remaining = history.prescribedSessions - sessions.length;
+              if (remaining >= 0 && remaining <= 2) {
+                alertList.push({ patient: p, history, remaining });
+              }
+            }
           }
         }
+        setAlerts(alertList);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
       }
-    });
-    setAlerts(alertList);
+    };
+    loadData();
   }, []);
 
   const filteredPatients = patients.filter(p => 
