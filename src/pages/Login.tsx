@@ -10,26 +10,25 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      const user = await login(dni, password);
-      if (user) {
-        if (user.role !== 'MEDICO' && user.role !== 'ADMISION') {
-          await logout();
-          setError('Acceso restringido: Solo el personal médico o administrativo puede ingresar.');
-          return;
-        }
+      const { user, ephemeral } = await login(dni, password);
+      if (ephemeral) {
+        // FISIOTERAPEUTA: sesión efímera, limpiar token y volver.
+        localStorage.removeItem('accessToken');
         navigate('/');
       } else {
-        setError('Credenciales inválidas');
+        navigate('/');
       }
+    } catch (err: any) {
+      setError(err.message || 'Credenciales inválidas');
     } finally {
       setLoading(false);
     }
@@ -54,7 +53,7 @@ export default function Login() {
           <p className="text-[var(--muted-foreground)] mt-2 text-sm font-medium">Software de Gestión Clínica</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} autoComplete="off" className="space-y-5">
           {error && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
@@ -73,6 +72,10 @@ export default function Login() {
             <input
               required
               type="text"
+              name="off_dni"
+              autoComplete="new-password"
+              data-lpignore="true"
+              data-form-type="other"
               value={dni}
               onChange={e => setDni(e.target.value)}
               className="w-full px-5 py-3.5 rounded-2xl border border-[var(--border)] bg-white dark:bg-[var(--card)] text-[var(--foreground)] focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all shadow-sm"
@@ -87,6 +90,10 @@ export default function Login() {
             <input
               required
               type="password"
+              name="off_pass"
+              autoComplete="new-password"
+              data-lpignore="true"
+              data-form-type="other"
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full px-5 py-3.5 rounded-2xl border border-[var(--border)] bg-white dark:bg-[var(--card)] text-[var(--foreground)] focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all shadow-sm"
@@ -112,19 +119,21 @@ export default function Login() {
           </div>
         </form>
         
-        <div className="mt-8 pt-6 border-t border-[var(--border)] text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--muted)]/50 rounded-full text-[10px] uppercase font-bold tracking-widest text-[var(--muted-foreground)] mb-4">
-            Credenciales de Prueba
-          </div>
-          <div className="grid grid-cols-1 gap-2 text-xs text-[var(--muted-foreground)]">
-            <div className="bg-[var(--muted)]/30 rounded-xl p-2 border border-[var(--border)]/50">
-              <span className="font-bold text-primary-500 uppercase">Médico:</span> admin / admin
+        {import.meta.env.DEV && (
+          <div className="mt-8 pt-6 border-t border-[var(--border)] text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--muted)]/50 rounded-full text-[10px] uppercase font-bold tracking-widest text-[var(--muted-foreground)] mb-4">
+              Ejemplo (sólo en desarrollo)
             </div>
-            <div className="bg-[var(--muted)]/30 rounded-xl p-2 border border-[var(--border)]/50">
-              <span className="font-bold text-secondary-500 uppercase">Admisión:</span> admision / admision
+            <div className="grid grid-cols-1 gap-2 text-xs text-[var(--muted-foreground)]">
+              <div className="bg-[var(--muted)]/30 rounded-xl p-2 border border-[var(--border)]/50">
+                <span className="font-bold text-primary-500 uppercase">Médico:</span> admin / *****
+              </div>
+              <div className="bg-[var(--muted)]/30 rounded-xl p-2 border border-[var(--border)]/50">
+                <span className="font-bold text-secondary-500 uppercase">Admisión:</span> admision / *****
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </motion.div>
     </div>
   );

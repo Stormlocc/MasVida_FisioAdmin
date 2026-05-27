@@ -1,10 +1,23 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, db } from '../lib/mockDb';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '../lib/api';
+
+export interface User {
+  id: string;
+  fullName: string;
+  dni: string;
+  role: 'MEDICO' | 'FISIOTERAPEUTA' | 'ADMISION';
+  active: boolean;
+  gender?: string;
+}
 
 interface AuthContextType {
   currentUser: User | null;
-  login: (dni: string, pass: string) => Promise<User | null>;
+  isGuest: boolean;
+  /**
+   * Login persistente (MEDICO / ADMISION): guarda token en localStorage, se restaura al refrescar.
+   * Login efímero (FISIOTERAPEUTA): NO guarda en localStorage, solo en memoria para la acción actual.
+   */
+  login: (dni: string, pass: string) => Promise<{ user: User; ephemeral: boolean }>;
   logout: () => void;
 }
 
@@ -14,34 +27,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('activeUserId');
-    if (saved) {
-      const u = db.getUserById(saved);
-      if (u) setCurrentUser(u);
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      authAPI.me().then(result => {
+        if (result.data) {
+          setCurrentUser(result.data);
+        } else {
+          localStorage.removeItem('accessToken');
+        }
+      });
     }
   }, []);
 
-  const login = async (dni: string, pass: string) => {
+  const login = useCallback(async (dni: string, pass: string) => {
     const result = await authAPI.login(dni, pass);
+    if (result.error) throw new Error(result.error);
+    const { access_token, user, ephemeral } = result.data!;
 
-    if (result.error) {
-      throw new Error(result.error);
+    if (ephemeral) {
+      // FISIOTERAPEUTA: token en memoria solo para la petición inmediata, no persistir.
+      localStorage.setItem('accessToken', access_token);
+    } else {
+      // MEDICO / ADMISION: persistir 6h.
+      localStorage.setItem('accessToken', access_token);
+      setCurrentUser(user);
     }
 
-    const { access_token, user } = result.data!;
-    localStorage.setItem('accessToken', access_token);
-    setCurrentUser(user);
-    return user;
-  };
+    return { user, ephemeral };
+  }, []);
 
-    const logout = async () => {
-      await authAPI.logout();
-      localStorage.removeItem('accessToken');
-      setCurrentUser(null);
-    };
+  const logout = useCallback(() => {
+    localStorage.removeItem('accessToken');
+    setCurrentUser(null);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, isGuest: currentUser === null, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, Patient } from '../lib/mockDb';
-import { useAuth } from '../context/AuthContext';
+import { patientsAPI } from '../lib/api';
 import { ArrowLeft, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function PatientNew() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const [formData, setFormData] = useState<Partial<Patient>>({
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     dni: '',
@@ -20,32 +18,26 @@ export default function PatientNew() {
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  React.useEffect(() => {
-    if (currentUser && currentUser.role !== 'MEDICO' && currentUser.role !== 'ADMISION') {
-      navigate('/');
-    }
-  }, [currentUser, navigate]);
-
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    
-    // Validate DNI uniqueness
-    const existingPatients = db.getPatients();
-    if (existingPatients.some(p => p.dni === formData.dni)) {
-      setErrorMsg('¡Un paciente con este DNI ya está registrado!');
+    setSaving(true);
+
+    const result = await patientsAPI.create(formData);
+    setSaving(false);
+
+    if (result.error) {
+      if (result.error.includes('409') || result.error.toLowerCase().includes('dni') || result.error.toLowerCase().includes('duplicate')) {
+        setErrorMsg('¡Un paciente con este DNI ya está registrado!');
+      } else {
+        setErrorMsg(result.error);
+      }
       return;
     }
 
-    const newPatient: Patient = {
-      ...(formData as any),
-      id: `p-${Date.now()}`,
-      status: 'ACTIVO',
-      createdAt: Date.now(),
-    };
-    db.savePatient(newPatient);
-    
+    const newPatient = result.data;
     setShowSuccess(true);
     setTimeout(() => {
       navigate(`/patients/${newPatient.id}`);
@@ -67,7 +59,7 @@ export default function PatientNew() {
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 relative">
         <AnimatePresence>
           {errorMsg && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -83,37 +75,35 @@ export default function PatientNew() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5">Nombres</label>
-              <input required type="text" value={formData.firstName} onChange={e=>setFormData({...formData, firstName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input required type="text" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Apellidos</label>
-              <input required type="text" value={formData.lastName} onChange={e=>setFormData({...formData, lastName: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input required type="text" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">DNI</label>
-              <input required type="text" value={formData.dni} onChange={e=>setFormData({...formData, dni: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">DNI</label>
+            <input required type="text" value={formData.dni} onChange={e => setFormData({ ...formData, dni: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5">Teléfono</label>
-              <input required type="text" value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input required type="text" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Correo Electrónico (Opcional)</label>
-              <input type="email" value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5">Fecha de Nacimiento</label>
-              <input required type="date" value={formData.birthDate || ''} onChange={e=>setFormData({...formData, birthDate: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
+              <input required type="date" value={formData.birthDate} onChange={e => setFormData({ ...formData, birthDate: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Sexo</label>
-              <select required value={formData.gender || ''} onChange={e=>setFormData({...formData, gender: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none">
+              <select required value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none">
                 <option value="" disabled>Seleccione...</option>
                 <option value="MASCULINO">Masculino</option>
                 <option value="FEMENINO">Femenino</option>
@@ -123,13 +113,13 @@ export default function PatientNew() {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5">Dirección</label>
-            <input required type="text" placeholder="Departamento, Provincia, Distrito" value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
+            <input required type="text" placeholder="Departamento, Provincia, Distrito" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent focus:ring-2 focus:ring-primary-500 outline-none" />
           </div>
 
           <div className="pt-4 flex justify-end">
-            <button type="submit" className="bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 px-6 rounded-xl flex items-center gap-2">
+            <button type="submit" disabled={saving} className="bg-primary-500 hover:bg-primary-600 disabled:opacity-60 text-white font-medium py-2.5 px-6 rounded-xl flex items-center gap-2">
               <Save size={18} />
-              Guardar y Continuar a Historia Clínica
+              {saving ? 'Guardando...' : 'Guardar y Continuar a Historia Clínica'}
             </button>
           </div>
         </form>
@@ -137,13 +127,13 @@ export default function PatientNew() {
 
       <AnimatePresence>
         {showSuccess && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: 'spring', bounce: 0.5 }}

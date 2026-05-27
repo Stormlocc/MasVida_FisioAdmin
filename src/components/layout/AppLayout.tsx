@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Logo } from '../Logo';
-import { LogOut, Sun, Moon, Users, LayoutDashboard, Menu, X, PlusCircle } from 'lucide-react';
+import { LogOut, Sun, Moon, LayoutDashboard, Menu, X, PlusCircle } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { GenderAvatar } from '../GenderAvatar';
 
 export default function AppLayout() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, isGuest, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -82,7 +82,7 @@ export default function AppLayout() {
         </nav>
 
         <div className="p-4 border-t border-[var(--border)]">
-          {currentUser ? (
+          {!isGuest && currentUser ? (
             <>
               <div className="flex items-center gap-3 mb-4 px-2">
                 <GenderAvatar gender={currentUser.gender} className="w-8 h-8 shrink-0" />
@@ -102,6 +102,7 @@ export default function AppLayout() {
           ) : (
             <Link
               to="/login"
+              onClick={() => setSidebarOpen(false)}
               className="flex w-full items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:hover:bg-primary-900/50 transition-colors"
             >
               <LogOut size={18} className="rotate-180" />

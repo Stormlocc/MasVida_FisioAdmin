@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -9,10 +8,9 @@ import PatientNew from './pages/PatientNew';
 import PatientProfile from './pages/PatientProfile';
 import Staff from './pages/Staff';
 
-function ProtectedRoute({ children, role }: { children: React.ReactNode, role?: string }) {
+function RequireMedico({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
-  if (!currentUser) return <Navigate to="/login" replace />;
-  if (role && currentUser.role !== role) return <Navigate to="/" replace />;
+  if (!currentUser || currentUser.role !== 'MEDICO') return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -25,9 +23,9 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<AppLayout />}>
               <Route index element={<Dashboard />} />
-              <Route path="patients/new" element={<ProtectedRoute role="MEDICO"><PatientNew /></ProtectedRoute>} />
+              <Route path="patients/new" element={<PatientNew />} />
               <Route path="patients/:id" element={<PatientProfile />} />
-              <Route path="staff" element={<ProtectedRoute role="MEDICO"><Staff /></ProtectedRoute>} />
+              <Route path="staff" element={<RequireMedico><Staff /></RequireMedico>} />
             </Route>
           </Routes>
         </BrowserRouter>
